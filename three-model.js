@@ -48,47 +48,52 @@ scene.add(rimLight);
 const assembly = new THREE.Group();
 scene.add(assembly);
 
-// Materials (High-End Mechanical Aesthetics)
+// Materials (High-End Mechanical Aesthetics with Dynamic Emissive for Kinetic Visualization)
 const matGrip = new THREE.MeshStandardMaterial({
-    color: 0x111111, // Carbon/Dark Grey
+    color: 0x111111,
     roughness: 0.9,
-    metalness: 0.2
+    metalness: 0.2,
+    emissive: new THREE.Color(0x000000) // Will pulse RED during chaos
 });
 const matHousing = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
-    transparent: true, 
-    opacity: 0.15, 
-    roughness: 0.1,
-    transmission: 0.9,
-    side: THREE.BackSide // Shows internal volume
+    transparent: true,
+    opacity: 0.30,
+    roughness: 0.05,
+    transmission: 0.6,
+    emissive: new THREE.Color(0x000000),
+    side: THREE.DoubleSide // More visible shell to show oscillation
 });
 const matOuterRing = new THREE.MeshStandardMaterial({
-    color: 0xcc9933, // Premium Brass / Gold Bearing
+    color: 0xcc9933,
     roughness: 0.3,
-    metalness: 0.8
+    metalness: 0.8,
+    emissive: new THREE.Color(0x000000) // Will glow AMBER while absorbing energy
 });
 const matInnerRing = new THREE.MeshStandardMaterial({
-    color: 0x2288cc, // Anodized Technical Blue
+    color: 0x2288cc,
     roughness: 0.2,
-    metalness: 0.7
+    metalness: 0.7,
+    emissive: new THREE.Color(0x000000) // Calmer blue glow while absorbing
 });
 const matSteel = new THREE.MeshStandardMaterial({
-    color: 0xe0e0e0, // High Polish Steel Shafts
+    color: 0xe0e0e0,
     roughness: 0.1,
     metalness: 0.95
 });
 const matSpoonBowl = new THREE.MeshStandardMaterial({
-    color: 0xe0e0e0, // Stainless Steel Spoon
+    color: 0xe0e0e0,
     roughness: 0.1,
     metalness: 0.95,
+    emissive: new THREE.Color(0x000000), // Stays dark = perfectly stable output
     side: THREE.DoubleSide
 });
 const matPeas = new THREE.MeshStandardMaterial({
-    color: 0x8bc34a, // Vibrant Green Peas (returning organic color)
+    color: 0x8bc34a,
     roughness: 0.9
 });
 const matPivot = new THREE.MeshStandardMaterial({
-    color: 0x222222, // Matte dark pivots
+    color: 0x222222,
     roughness: 0.5
 });
 
@@ -471,13 +476,33 @@ function animate() {
     
     if (isSimulating) {
         const f = tremorFreq;
-        const amp = (tremorIntensity / 100) * 0.45; 
-        
-        inChaosX = (Math.sin(time * f) * 0.5 + Math.sin(time * f * 2.3) * 0.3) * amp * 1.6;
-        const inChaosZ = (Math.sin(time * f * 1.5) * 0.5 + Math.sin(time * f * 2.7) * 0.3) * amp * 1.6;
+        // Max amplitude: 0.65 rad (~37°) — genuinely violent, high-amplitude tremor
+        const amp = (tremorIntensity / 100) * 0.65;
 
+        // 4-harmonic irrational-ratio Parkinsonian tremor profile
+        // Irrational ratios (1, 2.3, 5.7, 11.1) guarantee the signal NEVER repeats — perfectly erratic
+        inChaosX = (
+            Math.sin(time * f * 1.0)  * 0.50 +
+            Math.sin(time * f * 2.3)  * 0.28 +
+            Math.sin(time * f * 5.7)  * 0.14 +
+            Math.sin(time * f * 11.1) * 0.08
+        ) * amp;
+
+        const inChaosZ = (
+            Math.sin(time * f * 1.1 + 1.57) * 0.50 +
+            Math.sin(time * f * 2.7 + 0.73) * 0.28 +
+            Math.sin(time * f * 6.3 + 2.10) * 0.14 +
+            Math.sin(time * f * 13.5 + 0.47) * 0.08
+        ) * amp;
+
+        // Small Yaw drift: makes the handle feel like it's being torqued in 3 axes
+        const inChaosY = Math.sin(time * f * 0.7 + 1.0) * amp * 0.3;
+
+        // Apply ALL chaos to the housing (handle + hub casing)
         housingGroup.rotation.x = inChaosX;
         housingGroup.rotation.z = inChaosZ;
+        housingGroup.rotation.y = inChaosY;
+        inChaosX = inChaosX; // keep reference for graph
     } else {
         if(!isDragging) {
             housingGroup.rotation.x += (0 - housingGroup.rotation.x) * 0.1;
@@ -485,34 +510,38 @@ function animate() {
         }
     }
     
-    // MATHEMATICAL TARGET (Absolute World Zero)
+    // =====================================================
+    // PERFECT INSTANTANEOUS STABILIZATION
+    // The gimbal rings compute the exact mathematical inverse
+    // of the housing quaternion every frame, locking the payload
+    // at absolute world-zero orientation.
+    // =====================================================
     const invQ = housingGroup.quaternion.clone().invert();
     const tgtE = new THREE.Euler().setFromQuaternion(invQ, 'XZY');
 
-    // DYNAMIC MECHANICAL PHYSICS OVEHAUL
-    // Gravity pulls (spring force) the rings towards target Euler according to Counterweight Mass
-    const gravitySpring = (cwMassObj / 100.0) * 0.2; 
-    
-    // Friction forces the parent housing's rotation to "drag" the bearing, fighting gravity
-    const frictionPull = (gFriction / 100.0);
+    // Friction slider: blends between PERFECT (0%) and NO compensation (100%)
+    // At 0% friction → head is perfectly locked (ideal bearings)
+    // At 100% friction → rings seize and shake with the housing (degraded)
+    const frictionBlend = (gFriction / 100.0);
+
     const hDx = housingGroup.rotation.x - lastHouseX;
     const hDz = housingGroup.rotation.z - lastHouseZ;
-    lastHouseX = housingGroup.rotation.x; lastHouseZ = housingGroup.rotation.z;
+    lastHouseX = housingGroup.rotation.x;
+    lastHouseZ = housingGroup.rotation.z;
 
-    // Numerical Intergration (Pendulum)
-    velX += (tgtE.x - rollAxisGroup.rotation.x) * gravitySpring;
-    velX += hDx * frictionPull; // Friction transfer
-    velX *= 0.85; // Damping
-    rollAxisGroup.rotation.x += velX;
+    // Perfect target angles (absolute zero)
+    const perfectX = tgtE.x;
+    const perfectZ = tgtE.z;
+    const perfectY = tgtE.y;
 
-    velZ += (tgtE.z - pitchAxisGroup.rotation.z) * gravitySpring;
-    velZ += hDz * frictionPull;
-    velZ *= 0.85;
-    pitchAxisGroup.rotation.z += velZ;
+    // Degraded target (rings dragged by housing delta × friction)
+    velX = velX * 0.7 + hDx * frictionBlend;
+    velZ = velZ * 0.7 + hDz * frictionBlend;
 
-    velY += (tgtE.y - yawAxisGroup.rotation.y) * 0.1; // Stiff yaw constraint
-    velY *= 0.8;
-    yawAxisGroup.rotation.y += velY;
+    // Final angle = blend between perfect and degraded
+    rollAxisGroup.rotation.x  = perfectX  + velX;
+    pitchAxisGroup.rotation.z = perfectZ  + velZ;
+    yawAxisGroup.rotation.y   = perfectY;
 
     // Fluid Meniscus Dynamics: Liquid plane always stays perfectly world-level to simulate real liquid settling!
     const worldLevelQ = new THREE.Quaternion();
@@ -522,6 +551,56 @@ function animate() {
     // Arrow Visualization Scales
     inArrow.setLength( Math.max(10, Math.abs(hDx + hDz) * 1500) );
     dampArrow.setLength( Math.max(10, Math.abs(velX + velZ) * 800) );
+
+    // =====================================================
+    // KINETIC DISPARITY EMISSIVE VISUALIZATION
+    // Handle/Housing = RED (chaos input)
+    // Outer Ring     = AMBER (energy absorption at roll axis)
+    // Inner Ring     = BLUE  (residual energy at pitch axis)
+    // Spoon Bowl     = NONE  (zero energy, perfectly stable output)
+    // =====================================================
+    if (isSimulating || isDragging) {
+        // Housing velocity magnitude — how violently it's shaking THIS frame
+        const shakeIntensity = Math.min(1.0, Math.abs(hDx + hDz) * 40);
+        // Ring correction magnitude — how hard the rings are working to counter
+        const ringWork = Math.min(1.0, (Math.abs(perfectX) + Math.abs(perfectZ)) * 1.2);
+
+        // Handle pulses RED ↔ brighter = faster shake
+        matGrip.emissive.setRGB(shakeIntensity * 0.7, 0, 0);
+        matHousing.emissive.setRGB(shakeIntensity * 0.4, 0, 0);
+
+        // Outer ring glows AMBER — proportional to total rotation it's correcting
+        matOuterRing.emissive.setRGB(ringWork * 0.35, ringWork * 0.18, 0);
+
+        // Inner ring glows BLUE — calmer, smaller residual correction
+        const innerWork = Math.min(1.0, Math.abs(velX + velZ) * 10);
+        matInnerRing.emissive.setRGB(0, innerWork * 0.1, innerWork * 0.35);
+
+        // Spoon bowl stays completely dark — zero energy output
+        matSpoonBowl.emissive.setRGB(0, 0, 0);
+    } else {
+        // Fade all emissives back to zero at rest
+        matGrip.emissive.lerp(new THREE.Color(0, 0, 0), 0.15);
+        matHousing.emissive.lerp(new THREE.Color(0, 0, 0), 0.15);
+        matOuterRing.emissive.lerp(new THREE.Color(0, 0, 0), 0.15);
+        matInnerRing.emissive.lerp(new THREE.Color(0, 0, 0), 0.15);
+    }
+
+    // SPEED METER HUD — Live angular velocity readout
+    const handleSpeedRad = Math.abs(hDx) + Math.abs(hDz);
+    const ringSpeedRad   = Math.abs(velX) + Math.abs(velZ);
+    const handleDegS = Math.round(handleSpeedRad * 60 * 180 / Math.PI); // convert to deg/s at 60fps
+    const ringDegS   = Math.round(ringSpeedRad   * 60 * 180 / Math.PI);
+    const maxExpected = 200; // degrees/s at max intensity
+
+    const hudHandle    = document.getElementById('hud-handle');
+    const hudRing      = document.getElementById('hud-ring');
+    const hudHandleVal = document.getElementById('hud-handle-val');
+    const hudRingVal   = document.getElementById('hud-ring-val');
+    if (hudHandle)    hudHandle.style.width    = Math.min(100, (handleDegS / maxExpected) * 100) + '%';
+    if (hudRing)      hudRing.style.width      = Math.min(100, (ringDegS   / maxExpected) * 100) + '%';
+    if (hudHandleVal) hudHandleVal.textContent = handleDegS + '°/s';
+    if (hudRingVal)   hudRingVal.textContent   = ringDegS   + '°/s';
 
     // Chart Data Collection
     histIn.push(inChaosX * 100); 
