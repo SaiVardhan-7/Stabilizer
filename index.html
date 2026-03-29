@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Visualization</title>
+    <link rel="stylesheet" href="styles.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <!-- Import Three.js via ES modules -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="site-header">
+        <div class="logo">STABILIZER</div>
+        <div class="nav-links">
+            <span>Engineering</span>
+            <span>Design</span>
+            <span>Polymers</span>
+        </div>
+    </div>
+    
+    <div class="hero-content">
+        <div class="hero-text">
+            <h1>Kinematic Stabilizer<br>Engineering Schematic</h1>
+            <p>Passive Dynamic Tremor Isolation Mechanism</p>
+            <div class="instructions">/// DRAG HANDLE TO SHAKE /// ORB/SCROLL VIEWS ///</div>
+        </div>
+        
+        <div class="simulation-dashboard">
+            <div class="sim-controls">
+                <button id="btn-simulate" class="primary-btn">START TREMOR SIMULATION</button>
+                
+                <div class="button-row">
+                    <button id="btn-explode" class="secondary-btn">EXPLODE ASSEMBLY</button>
+                    <button id="btn-reset" class="secondary-btn">RESET</button>
+                </div>
+
+                <div class="slider-group">
+                    <label>Tremor Intensity <span id="val-intensity">50%</span></label>
+                    <input type="range" id="slider-intensity" min="0" max="100" value="50">
+                </div>
+                <div class="slider-group">
+                    <label>Tremor Frequency <span id="val-frequency">5.0 Hz</span></label>
+                    <input type="range" id="slider-frequency" min="1" max="20" value="5">
+                </div>
+                <div class="slider-group">
+                    <label>Bearing Friction <span id="val-friction">0%</span></label>
+                    <input type="range" id="slider-friction" min="0" max="100" value="0">
+                </div>
+                <div class="slider-group">
+                    <label>Counterweight Anchor Mass <span id="val-mass">35g</span></label>
+                    <input type="range" id="slider-mass" min="0" max="100" value="35">
+                </div>
+                
+                <div class="dropdown-group">
+                    <label>Payload Material</label>
+                    <select id="select-payload" class="tech-select">
+                        <option value="peas">Density 1.2: Standard Solids (Peas)</option>
+                        <option value="liquid">Density 1.0: Organic Liquid (Soup)</option>
+                        <option value="empty">Density 0.0: Unloaded Testing (Empty)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sim-graph">
+                <div class="graph-labels">
+                    <span class="lbl-input">■ Input Chaos (Handle)</span>
+                    <span class="lbl-output">■ Payload Horizon (Spoon)</span>
+                </div>
+                <canvas id="liveGraph" width="380" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- The 3D logic -->
+    <script type="module" src="three-model.js"></script>
+</body>
+
+</html>
